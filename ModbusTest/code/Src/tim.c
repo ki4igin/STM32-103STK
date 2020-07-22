@@ -49,7 +49,8 @@ void TIM2_Init(void)
 void TIM4_Init(void)
 {
   LL_TIM_InitTypeDef TIM_InitStruct = {0};
-
+  LL_TIM_OC_InitTypeDef TIM_OC_InitStruct = {0};
+  
   /* Peripheral clock enable */
   RCC->APB1ENR |= RCC_APB1ENR_TIM4EN;
 
@@ -62,6 +63,15 @@ void TIM4_Init(void)
   TIM_InitStruct.Autoreload  = 347 - 1;
   LL_TIM_Init(TIM4, &TIM_InitStruct);
   LL_TIM_ClearFlag_UPDATE(TIM4);
+
+  TIM_OC_InitStruct.OCMode       = LL_TIM_OCMODE_FROZEN;
+  TIM_OC_InitStruct.OCState      = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.OCNState     = LL_TIM_OCSTATE_DISABLE;
+  TIM_OC_InitStruct.CompareValue = 200;
+  TIM_OC_InitStruct.OCPolarity   = LL_TIM_OCPOLARITY_HIGH;
+  LL_TIM_OC_Init(TIM4, LL_TIM_CHANNEL_CH1, &TIM_OC_InitStruct);
+  LL_TIM_OC_DisableFast(TIM4, LL_TIM_CHANNEL_CH1);
+
   LL_TIM_DisableARRPreload(TIM4);
   LL_TIM_SetTriggerOutput(TIM4, LL_TIM_TRGO_UPDATE);
   LL_TIM_DisableMasterSlaveMode(TIM4);

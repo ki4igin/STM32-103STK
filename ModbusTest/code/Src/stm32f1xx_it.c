@@ -131,5 +131,10 @@ void TIM4_IRQHandler(void)
     LL_TIM_ClearFlag_UPDATE(TIM4);
     Tim4Update_Callback();
   }
+  if (LL_TIM_IsActiveFlag_CC1(TIM4))
+  {
+    LL_TIM_ClearFlag_CC1(TIM4);
+    Tim4CC1_Callback();
+  }
 }
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

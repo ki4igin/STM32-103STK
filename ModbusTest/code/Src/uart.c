@@ -15,6 +15,7 @@
 UartFlags_t uartFlags = {0};
 
 static uint8_t  cntRx     = {0};
+static uint8_t  cnt15t    = {0};
 static uint8_t  txBufSize = {0};
 static uint8_t *ptxBuf;
 static uint8_t *prxBuf;
@@ -137,7 +138,14 @@ void Tim4Update_Callback()
 
   uartFlags.rx    = 1;
   uartFlags.cntRx = cntRx;
+  uartFlags.cnt15t = cnt15t;
 
+  cnt15t = 0;
   cntRx = 0;
+}
+
+void Tim4CC1_Callback()
+{
+  cnt15t++;
 }
 // End File --------------------------------------------------------------------

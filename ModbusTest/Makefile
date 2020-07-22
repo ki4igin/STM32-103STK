@@ -77,7 +77,8 @@ FLAGS += -funsigned-char
 # FLAGS += -fshort-wchar
 
 # FLAGS += -fpack-struct
-FLAGS += -std=gnu11
+FLAGS += -std=gnu17
+# FLAGS += -fms-extensions
 # FLAGS += -flto
 FLAGS += -Winline -Wall -Wextra -Wpedantic #-Werror 
 

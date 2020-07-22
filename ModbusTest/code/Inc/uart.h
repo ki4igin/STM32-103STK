@@ -9,6 +9,7 @@ typedef struct
   uint8_t rx : 1;  // Флаг приема данных
   uint8_t tx : 1;  // Флаг передачи данных
   uint8_t cntRx;   // колличество принятых данных
+  uint8_t cnt15t;   // колличество принятых данных
 } UartFlags_t;
 // Macro -----------------------------------------------------------------------
 
@@ -26,6 +27,7 @@ void UsartReceiveIT(USART_TypeDef *USARTx, uint8_t *pbuf);
 void Usart1Rx_Callback(void);
 void Usart1Tx_Callback(void);
 void Tim4Update_Callback(void);
+void Tim4CC1_Callback();
 // Inline Functions ------------------------------------------------------------
 
 #endif
