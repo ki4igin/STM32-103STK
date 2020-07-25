@@ -4,7 +4,11 @@
 #include "uart.h"
 #include "rcc.h"
 #include "tim.h"
+#include "adc.h"
+#include "dma.h"
 #include "modbus.h"
+#include "stm32f1xx_ll_adc.h"
+#include "stm32f1xx_ll_dma.h"
 // Private Typedef -------------------------------------------------------------
 
 // Private Macro ---------------------------------------------------------------
@@ -30,10 +34,16 @@ int main(void)
   SysTickInit();
   // Initialize all configured peripherals
   GpioInit();
-  ModBusInit();  
+  ModBusInit();
+	 MX_DMA_Init();
+  MX_ADC1_Init(); 
+  TIM3_Init();
   UsartSendStrIT(USART1, (uint8_t*)"\nInit Complete\n");
-  
 
+	
+	LL_ADC_Enable(ADC1);
+  LL_ADC_REG_StartConversionExtTrig(ADC1, LL_ADC_REG_TRIG_EXT_RISING);
+  LL_TIM_EnableCounter(TIM3);
   // Infinite loop
   while (1)
   {

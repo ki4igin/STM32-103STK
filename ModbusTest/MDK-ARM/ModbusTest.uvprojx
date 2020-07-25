@@ -418,6 +418,11 @@
               <FileType>1</FileType>
               <FilePath>..\code\Drivers\LL\stm32f1xx_ll_tim.c</FilePath>
             </File>
+            <File>
+              <FileName>stm32f1xx_ll_dma.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\Drivers\LL\stm32f1xx_ll_dma.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -477,6 +482,16 @@
               <FileName>uart.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\code\Src\uart.c</FilePath>
+            </File>
+            <File>
+              <FileName>adc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\Src\adc.c</FilePath>
+            </File>
+            <File>
+              <FileName>dma.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\Src\dma.c</FilePath>
             </File>
           </Files>
         </Group>

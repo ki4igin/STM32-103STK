@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : TIM.h
+  * File Name          : dma.c
   * Description        : This file provides code for the configuration
-  *                      of the TIM instances.
+  *                      of all the requested memory to memory DMA transfers.
   ******************************************************************************
   * @attention
   *
@@ -16,31 +16,41 @@
   *
   ******************************************************************************
   */
-/* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __tim_H
-#define __tim_H
-#ifdef __cplusplus
- extern "C" {
-#endif
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
-#include "stm32f1xx_ll_tim.h"
+#include "dma.h"
+/* USER CODE BEGIN 0 */
 
+/* USER CODE END 0 */
 
+/*----------------------------------------------------------------------------*/
+/* Configure DMA                                                              */
+/*----------------------------------------------------------------------------*/
 
-void TIM2_Init(void);
-void TIM3_Init(void);
-void TIM4_Init(void);
-// void Tim2Update_Callback(void);
-// void Tim6Update_Callback(void);
+/* USER CODE BEGIN 1 */
 
+/* USER CODE END 1 */
 
+/** 
+  * Enable DMA controller clock
+  */
+void MX_DMA_Init(void) 
+{
 
-#ifdef __cplusplus
+  /* Init with LL driver */
+  /* DMA controller clock enable */
+  RCC->AHBENR |= RCC_AHBENR_DMA1EN;
+
+  /* DMA interrupt init */
+  /* DMA1_Channel1_IRQn interrupt configuration */
+  NVIC_SetPriority(DMA1_Channel1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
+  NVIC_EnableIRQ(DMA1_Channel1_IRQn);
+
 }
-#endif
-#endif /*__ tim_H */
+
+/* USER CODE BEGIN 2 */
+
+/* USER CODE END 2 */
 
 /**
   * @}

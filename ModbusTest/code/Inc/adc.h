@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * File Name          : TIM.h
+  * File Name          : ADC.h
   * Description        : This file provides code for the configuration
-  *                      of the TIM instances.
+  *                      of the ADC instances.
   ******************************************************************************
   * @attention
   *
@@ -17,30 +17,33 @@
   ******************************************************************************
   */
 /* Define to prevent recursive inclusion -------------------------------------*/
-#ifndef __tim_H
-#define __tim_H
+#ifndef __adc_H
+#define __adc_H
 #ifdef __cplusplus
  extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stm32f1xx_ll_tim.h"
 
+/* USER CODE BEGIN Includes */
 
+/* USER CODE END Includes */
 
-void TIM2_Init(void);
-void TIM3_Init(void);
-void TIM4_Init(void);
-// void Tim2Update_Callback(void);
-// void Tim6Update_Callback(void);
+/* USER CODE BEGIN Private defines */
 
+/* USER CODE END Private defines */
 
+void MX_ADC1_Init(void);
+void Dma1Channel1HT_Callback(void);
+/* USER CODE BEGIN Prototypes */
+
+/* USER CODE END Prototypes */
 
 #ifdef __cplusplus
 }
 #endif
-#endif /*__ tim_H */
+#endif /*__ adc_H */
 
 /**
   * @}

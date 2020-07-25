@@ -25,25 +25,41 @@
 /* USER CODE END 0 */
 
 /* TIM2 init function */
-void TIM2_Init(void)
+// void TIM2_Init(void)
+// {
+//   LL_TIM_InitTypeDef TIM_InitStruct = {0};
+
+//   /* Peripheral clock enable */
+//   RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+
+//   /* TIM2 interrupt Init */
+//   // NVIC_SetPriority(TIM2_IRQn,
+//   //                  NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+//   // NVIC_EnableIRQ(TIM2_IRQn);
+
+//   TIM_InitStruct.Prescaler   = 0;
+//   TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
+//   TIM_InitStruct.Autoreload  = 1200;
+//   LL_TIM_Init(TIM2, &TIM_InitStruct);
+//   LL_TIM_DisableARRPreload(TIM2);
+//   LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_UPDATE);
+//   LL_TIM_DisableMasterSlaveMode(TIM2);
+// }
+
+void TIM3_Init()
 {
-  // LL_TIM_InitTypeDef TIM_InitStruct = {0};
+    LL_TIM_InitTypeDef TIM_InitStruct = {0};
 
-  // /* Peripheral clock enable */
-  // RCC->APB1ENR1 |= RCC_APB1ENR1_TIM2EN;
+    /* Peripheral clock enable */
+    RCC->APB1ENR |= RCC_APB1ENR_TIM3EN;
 
-  // /* TIM2 interrupt Init */
-  // NVIC_SetPriority(TIM2_IRQn,
-  //                  NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
-  // NVIC_EnableIRQ(TIM2_IRQn);
-
-  // TIM_InitStruct.Prescaler   = 0;
-  // TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
-  // TIM_InitStruct.Autoreload  = 1200;
-  // LL_TIM_Init(TIM2, &TIM_InitStruct);
-  // LL_TIM_DisableARRPreload(TIM2);
-  // LL_TIM_SetTriggerOutput(TIM2, LL_TIM_TRGO_UPDATE);
-  // LL_TIM_DisableMasterSlaveMode(TIM2);
+    TIM_InitStruct.Prescaler   = 7200 - 1;
+    TIM_InitStruct.CounterMode = LL_TIM_COUNTERMODE_UP;
+    TIM_InitStruct.Autoreload  = 10000 - 1;
+    LL_TIM_Init(TIM3, &TIM_InitStruct);
+    LL_TIM_DisableARRPreload(TIM3);
+    LL_TIM_SetTriggerOutput(TIM3, LL_TIM_TRGO_UPDATE);
+    LL_TIM_DisableMasterSlaveMode(TIM3);
 }
 
 void TIM4_Init(void)
