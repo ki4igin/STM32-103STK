@@ -9,6 +9,7 @@
 #include "modbus.h"
 #include "stm32f1xx_ll_adc.h"
 #include "stm32f1xx_ll_dma.h"
+#include "AD5270.h"
 // Private Typedef -------------------------------------------------------------
 
 // Private Macro ---------------------------------------------------------------
@@ -35,13 +36,15 @@ int main(void)
   // Initialize all configured peripherals
   GpioInit();
   ModBusInit();
-	 MX_DMA_Init();
-  MX_ADC1_Init(); 
+  MX_DMA_Init();
+  MX_ADC1_Init();
   TIM3_Init();
+  AD5270Init();
+  __IO uint16_t temp1 = AD5270ReadRdac(SLA_HEAT);
+  __IO uint16_t temp2 = AD5270ReadRdac(SLA_FIRE);
   UsartSendStrIT(USART1, (uint8_t*)"\nInit Complete\n");
 
-	
-	LL_ADC_Enable(ADC1);
+  LL_ADC_Enable(ADC1);
   LL_ADC_REG_StartConversionExtTrig(ADC1, LL_ADC_REG_TRIG_EXT_RISING);
   LL_TIM_EnableCounter(TIM3);
   // Infinite loop

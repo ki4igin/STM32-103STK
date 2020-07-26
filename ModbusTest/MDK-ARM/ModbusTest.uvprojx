@@ -493,6 +493,16 @@
               <FileType>1</FileType>
               <FilePath>..\code\Src\dma.c</FilePath>
             </File>
+            <File>
+              <FileName>AD5270.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\Src\AD5270.c</FilePath>
+            </File>
+            <File>
+              <FileName>spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\code\Src\spi.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
