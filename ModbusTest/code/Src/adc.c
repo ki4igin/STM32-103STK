@@ -1,21 +1,21 @@
 /**
-  ******************************************************************************
-  * File Name          : ADC.c
-  * Description        : This file provides code for the configuration
-  *                      of the ADC instances.
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
-  * All rights reserved.</center></h2>
-  *
-  * This software component is licensed by ST under BSD 3-Clause license,
-  * the "License"; You may not use this file except in compliance with the
-  * License. You may obtain a copy of the License at:
-  *                        opensource.org/licenses/BSD-3-Clause
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * File Name          : ADC.c
+ * Description        : This file provides code for the configuration
+ *                      of the ADC instances.
+ ******************************************************************************
+ * @attention
+ *
+ * <h2><center>&copy; Copyright (c) 2020 STMicroelectronics.
+ * All rights reserved.</center></h2>
+ *
+ * This software component is licensed by ST under BSD 3-Clause license,
+ * the "License"; You may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at:
+ *                        opensource.org/licenses/BSD-3-Clause
+ *
+ ******************************************************************************
+ */
 
 /* Includes ------------------------------------------------------------------*/
 #include "adc.h"
@@ -25,28 +25,22 @@
 
 #define ADC_DELAY_ENABLE_CALIB_CPU_CYCLES                                      \
   (LL_ADC_DELAY_ENABLE_CALIB_ADC_CYCLES * 32)
-/* Internal temperature sensor, parameter Avg_Slope (unit: uV/DegCelsius). Refer to device datasheet for min/typ/max values. */
+/* Internal temperature sensor, parameter Avg_Slope (unit: uV/DegCelsius). Refer
+ * to device datasheet for min/typ/max values. */
 #define INTERNAL_TEMPSENSOR_AVGSLOPE ((int32_t)4300)
-/* Internal temperature sensor, parameter V25 (unit: mV). Refer to device datasheet for min/typ/max values. */
+/* Internal temperature sensor, parameter V25 (unit: mV). Refer to device
+ * datasheet for min/typ/max values. */
 #define INTERNAL_TEMPSENSOR_V25      ((int32_t)1430)
 #define INTERNAL_TEMPSENSOR_V25_TEMP ((int32_t)25)
 #define INTERNAL_TEMPSENSOR_V25_VREF ((int32_t)3300)
 #define VDDA_APPLI                   ((uint32_t)3300)
 
 /* USER CODE BEGIN 0 */
-typedef struct
-{
-  uint16_t fireMonCur;
-  uint16_t heatMonV;
-  uint16_t heatMonCur;
-  uint16_t fireMonV;
-  uint16_t temp;
-  uint16_t vref;
-} AdcDate_t;
 
 /* USER CODE END 0 */
-AdcDate_t adcDate   = {0};
-uint16_t  adcBuf[6] = {0};
+AdcDate_t  adcDate   = {0};
+AdcFlags_t adcFlags  = {0};
+uint16_t   adcBuf[6] = {0};
 
 __STATIC_INLINE void ConvertData(void);
 __STATIC_INLINE void Activate_ADC(void);
@@ -60,11 +54,11 @@ void MX_ADC1_Init(void)
   /* Peripheral clock enable */
   RCC->APB2ENR |= RCC_APB2ENR_ADC1EN | RCC_APB2ENR_IOPAEN;
 
-  /**ADC1 GPIO Configuration  
+  /**ADC1 GPIO Configuration
   PA0-WKUP   ------> ADC1_IN0
   PA1   ------> ADC1_IN1
   PA2   ------> ADC1_IN2
-  PA3   ------> ADC1_IN3 
+  PA3   ------> ADC1_IN3
   */
   GpioSetMode(MON_GPIO_Port,
               FIRE_MON_CUR_Pin | FIRE_MON_V_Pin | HEAT_MON_V_Pin |
@@ -105,8 +99,8 @@ void MX_ADC1_Init(void)
   LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_1);
 
   /* ADC1 Init */
-  /** Common config 
-  */
+  /** Common config
+   */
   ADC_InitStruct.DataAlignment      = LL_ADC_DATA_ALIGN_RIGHT;
   ADC_InitStruct.SequencersScanMode = LL_ADC_SEQ_SCAN_ENABLE;
   LL_ADC_Init(ADC1, &ADC_InitStruct);
@@ -119,32 +113,32 @@ void MX_ADC1_Init(void)
   ADC_REG_InitStruct.ContinuousMode   = LL_ADC_REG_CONV_SINGLE;
   ADC_REG_InitStruct.DMATransfer      = LL_ADC_REG_DMA_TRANSFER_UNLIMITED;
   LL_ADC_REG_Init(ADC1, &ADC_REG_InitStruct);
-  /** Configure Regular Channel 
-  */
+  /** Configure Regular Channel
+   */
   LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_1, LL_ADC_CHANNEL_0);
   LL_ADC_SetChannelSamplingTime(ADC1,
                                 LL_ADC_CHANNEL_0,
                                 LL_ADC_SAMPLINGTIME_1CYCLE_5);
-  /** Configure Regular Channel 
-  */
+  /** Configure Regular Channel
+   */
   LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_2, LL_ADC_CHANNEL_1);
   LL_ADC_SetChannelSamplingTime(ADC1,
                                 LL_ADC_CHANNEL_1,
                                 LL_ADC_SAMPLINGTIME_1CYCLE_5);
-  /** Configure Regular Channel 
-  */
+  /** Configure Regular Channel
+   */
   LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_3, LL_ADC_CHANNEL_2);
   LL_ADC_SetChannelSamplingTime(ADC1,
                                 LL_ADC_CHANNEL_2,
                                 LL_ADC_SAMPLINGTIME_1CYCLE_5);
-  /** Configure Regular Channel 
-  */
+  /** Configure Regular Channel
+   */
   LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_4, LL_ADC_CHANNEL_3);
   LL_ADC_SetChannelSamplingTime(ADC1,
                                 LL_ADC_CHANNEL_3,
                                 LL_ADC_SAMPLINGTIME_1CYCLE_5);
-  /** Configure Regular Channel 
-  */
+  /** Configure Regular Channel
+   */
   LL_ADC_REG_SetSequencerRanks(ADC1,
                                LL_ADC_REG_RANK_5,
                                LL_ADC_CHANNEL_TEMPSENSOR);
@@ -153,8 +147,8 @@ void MX_ADC1_Init(void)
                                 LL_ADC_SAMPLINGTIME_239CYCLES_5);
   LL_ADC_SetCommonPathInternalCh(__LL_ADC_COMMON_INSTANCE(ADC1),
                                  LL_ADC_PATH_INTERNAL_TEMPSENSOR);
-  /** Configure Regular Channel 
-  */
+  /** Configure Regular Channel
+   */
   LL_ADC_REG_SetSequencerRanks(ADC1, LL_ADC_REG_RANK_6, LL_ADC_CHANNEL_VREFINT);
   LL_ADC_SetChannelSamplingTime(ADC1,
                                 LL_ADC_CHANNEL_VREFINT,
@@ -225,6 +219,7 @@ __STATIC_INLINE void Activate_ADC(void)
 void Dma1Channel1HT_Callback()
 {
   ConvertData();
+  adcFlags.adcUpdate = 1;
 }
 
 __STATIC_INLINE void ConvertData(void)

@@ -1,6 +1,5 @@
 // Includes --------------------------------------------------------------------
 #include "modbus.h"
-#include "main.h"
 #include "crc16.h"
 #include "uart.h"
 #include "tim.h"
@@ -10,19 +9,20 @@ typedef enum
 {
   FUNC_READ_Coils       = 0x01,
   FUNC_READ_DiscInput   = 0x02,
-  FUNC_READ_HoldRegs    = 0x03,
+  FUNC_READ_Regs        = 0x03,
   FUNC_READ_InputRegs   = 0x04,
   FUNC_WRITE_SingleCoil = 0x05,
   FUNC_WRITE_SingleReg  = 0x06,
   FUNC_WRITE_MultCoils  = 0x0F,
   FUNC_WRITE_MultleRegs = 0x10,
 } FUNC_TypeDef;
+
 // Private Macro ---------------------------------------------------------------
-#define CRC_CHECK_DISABLE
+#define CRC_CHECK_DISABLE  // Выключение проверки crc
 
 #define UART LPUART
 
-#define SLA ('1')
+#define SLA (0x0A)  // Адрес устройства
 // Private Variables -----------------------------------------------------------
 uint8_t rxBuf[256] = {0};
 uint8_t txBuf[256] = {0};
@@ -57,22 +57,17 @@ union
   uint16_t all;
 } modBusCoils;
 
-struct
-{
-  uint16_t temp1;
-  uint16_t temp2;
-  uint16_t temp3;
-} modBusInputRegs;
-struct
-{
-  uint16_t temp1;
-  uint16_t temp2;
-  uint16_t temp3;
-} modBusHoldRegs;
-
+MBRegs_t  mbRegs  = {0};
+MBFlags_t mbFlags = {0};
 // Private Function prototypes -------------------------------------------------
-uint8_t DataProcessing(void);
-// Functions -------------------------------------------------------------------
+uint8_t                 DataProcessing(void);
+__STATIC_INLINE uint8_t ReadRegs(uint8_t txBufSize);
+__STATIC_INLINE uint8_t WriteSingleReg(uint8_t txBufSize);
+__STATIC_INLINE uint8_t WriteMultleRegs(uint8_t txBufSize);
+
+__STATIC_INLINE uint8_t Error(uint8_t exceptionCode);
+// Functions
+// -------------------------------------------------------------------
 void ModBusInit()
 {
   UsartInit();
@@ -120,58 +115,140 @@ uint8_t DataProcessing()
   FUNC_TypeDef func = (FUNC_TypeDef)rxBuf[1];
   switch (func)
   {
-    case FUNC_READ_Coils:
-    {
-      uint16_t startAddr = __REV16(*(uint16_t*)&rxBuf[2]);
-      uint16_t quality   = __REV16(*(uint16_t*)&rxBuf[4]);
+    case FUNC_READ_Regs:
+      txBufSize = ReadRegs(txBufSize);
+      break;
 
-      txBuf[txBufSize++] = (quality - 1) / 8 + 1;
-      // txBuf[txBufSize] = 0;
-      for (uint16_t i = 0; i < quality; i++)
-      {
-        if ((i & 0x7) == 0x0)
-        {
-          txBuf[++txBufSize] = 0;
-        }
-
-        uint32_t bitMask = 1U << (startAddr + i);
-        txBuf[txBufSize] |= (READ_BIT(modBusCoils.all, bitMask) == bitMask) << (i & 0x7);
-      }
-      txBufSize++;
-      // uint16_t* pCoils    = (uint16_t*)&modBusCoils;
-      // pCoils += startAddr;
-      // for (uint16_t i = 0; i < quality; i++)
-      // {
-      //   txBuf[txBufSize++] = *pCoils++;
-      // }
-      break;
-    }
-    case FUNC_READ_DiscInput:
-      break;
-    case FUNC_READ_HoldRegs:
-      /* code */
-      break;
-    case FUNC_READ_InputRegs:
-      /* code */
-      break;
-    case FUNC_WRITE_SingleCoil:
-      /* code */
-      break;
     case FUNC_WRITE_SingleReg:
-      /* code */
-      break;
-    case FUNC_WRITE_MultCoils:
-      /* code */
+      txBufSize = WriteSingleReg(txBufSize);
       break;
     case FUNC_WRITE_MultleRegs:
-      /* code */
+      txBufSize = WriteMultleRegs(txBufSize);
       break;
 
     default:
+      txBufSize = Error(0x01);
       break;
   }
   uint16_t crc16     = Crc16(txBuf, txBufSize);
   txBuf[txBufSize++] = (uint8_t)crc16;
   txBuf[txBufSize++] = (uint8_t)(crc16 >> 8);
   return txBufSize;
+}
+
+void ReadCoils(uint8_t txBufSize)
+{
+  uint16_t startAddr = __REV16(*(uint16_t*)&rxBuf[2]);
+  uint16_t quality   = __REV16(*(uint16_t*)&rxBuf[4]);
+
+  txBuf[txBufSize++] = (quality - 1) / 8 + 1;
+  // txBuf[txBufSize] = 0;
+  for (uint16_t i = 0; i < quality; i++)
+  {
+    if ((i & 0x7) == 0x0)
+    {
+      txBuf[++txBufSize] = 0;
+    }
+
+    uint32_t bitMask = 1U << (startAddr + i);
+    txBuf[txBufSize] |= (READ_BIT(modBusCoils.all, bitMask) == bitMask)
+                        << (i & 0x7);
+  }
+  txBufSize++;
+  // uint16_t* pCoils    = (uint16_t*)&modBusCoils;
+  // pCoils += startAddr;
+  // for (uint16_t i = 0; i < quality; i++)
+  // {
+  //   txBuf[txBufSize++] = *pCoils++;
+  // }
+}
+
+__STATIC_INLINE uint8_t ReadRegs(uint8_t txBufSize)
+{
+  uint16_t startAddr = __REV16(*(uint16_t*)&rxBuf[2]);
+  uint16_t quality   = __REV16(*(uint16_t*)&rxBuf[4]);
+
+  if (quality == 0 || quality > 0x007D)
+  {
+    return Error(0x03);
+  }
+  else if ((startAddr > (sizeof(MBRegs_t) / (sizeof(uint16_t)))) ||
+           ((uint32_t)startAddr + quality) >
+               (sizeof(MBRegs_t) / (sizeof(uint16_t))))
+  {
+    return Error(0x02);
+  }
+
+  uint16_t* pmbRegs = (uint16_t*)&mbRegs + startAddr;
+
+  txBuf[txBufSize++] = 2 * quality;
+
+  for (uint8_t i = 0; i < quality; i++)
+  {
+    txBuf[txBufSize++] = *pmbRegs++;
+  }
+  return txBufSize;
+}
+
+__STATIC_INLINE uint8_t WriteSingleReg(uint8_t txBufSize)
+{
+  uint16_t startAddr = __REV16(*(uint16_t*)&rxBuf[2]);
+  uint16_t value     = __REV16(*(uint16_t*)&rxBuf[4]);
+
+  if (startAddr > (sizeof(MBRegs_t) / (sizeof(uint16_t))))
+  {
+    return Error(0x02);
+  }
+  uint16_t* pmbRegs  = (uint16_t*)&mbRegs + startAddr;
+  *pmbRegs           = value;
+  txBuf[txBufSize++] = startAddr >> 8;
+  txBuf[txBufSize++] = (uint8_t)startAddr;
+  txBuf[txBufSize++] = value >> 8;
+  txBuf[txBufSize++] = (uint8_t)value;
+
+  mbFlags.regsUpdate = 1;
+
+  return txBufSize;
+}
+
+__STATIC_INLINE uint8_t WriteMultleRegs(uint8_t txBufSize)
+{
+  uint16_t startAddr = __REV16(*(uint16_t*)&rxBuf[2]);
+  uint16_t quality   = __REV16(*(uint16_t*)&rxBuf[4]);
+  uint8_t  byteCnt   = rxBuf[6];
+
+  if ((quality == 0 || quality > 0x007B) || (byteCnt != 2 * quality))
+  {
+    return Error(0x03);
+  }
+  else if ((startAddr > (sizeof(MBRegs_t) / (sizeof(uint16_t)))) ||
+           ((uint32_t)startAddr + quality) >
+               (sizeof(MBRegs_t) / (sizeof(uint16_t))))
+  {
+    return Error(0x02);
+  }
+
+  uint16_t* pmbRegs = (uint16_t*)&mbRegs + startAddr;
+  uint16_t* prxBuf  = (uint16_t*)&rxBuf[7];
+
+  for (uint8_t i = 0; i < quality; i++)
+  {
+    *pmbRegs++ = *prxBuf++;
+  }
+
+  txBuf[txBufSize++] = startAddr >> 8;
+  txBuf[txBufSize++] = (uint8_t)startAddr;
+  txBuf[txBufSize++] = 0;
+  txBuf[txBufSize++] = (uint8_t)quality;
+
+  mbFlags.regsUpdate = 1;
+
+  return txBufSize;
+}
+
+__STATIC_INLINE uint8_t Error(uint8_t exceptionCode)
+{
+  txBuf[1] |= 0x80;
+  txBuf[2] = exceptionCode;
+  return 3;
 }

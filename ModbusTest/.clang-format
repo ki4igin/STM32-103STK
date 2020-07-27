@@ -65,7 +65,7 @@ KeepEmptyLinesAtTheStartOfBlocks: false
 MaxEmptyLinesToKeep: 1
 NamespaceIndentation : All
 PointerAlignment: Left
-ReflowComments: false
+ReflowComments: true
 SortIncludes: false
 SpaceAfterCStyleCast: false
 SpaceAfterLogicalNot : false

@@ -26,13 +26,23 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-/* USER CODE BEGIN Includes */
+typedef struct
+{
+  uint16_t fireMonCur;
+  uint16_t heatMonV;
+  uint16_t heatMonCur;
+  uint16_t fireMonV;
+  uint16_t temp;
+  uint16_t vref;
+} AdcDate_t;
 
-/* USER CODE END Includes */
+typedef struct
+{
+  uint8_t adcUpdate : 1;
+} AdcFlags_t;
 
-/* USER CODE BEGIN Private defines */
-
-/* USER CODE END Private defines */
+extern AdcDate_t adcDate;
+extern AdcFlags_t adcFlags;
 
 void MX_ADC1_Init(void);
 void Dma1Channel1HT_Callback(void);

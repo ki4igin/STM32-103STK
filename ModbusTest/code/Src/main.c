@@ -17,10 +17,12 @@
 // Private Variables -----------------------------------------------------------
 
 // Private Function prototypes -------------------------------------------------
-void SystemClock_Config(void);
-void Delay_ms(uint32_t delay);
-
-// Functions -------------------------------------------------------------------
+void                 SystemClock_Config(void);
+void                 Delay_ms(uint32_t delay);
+__STATIC_INLINE void RegsUpdate(void);
+__STATIC_INLINE void AdcUpdate(void);
+// Functions
+// -------------------------------------------------------------------
 int main(void)
 {
   // MCU Configuration
@@ -51,6 +53,17 @@ int main(void)
   while (1)
   {
     ModBusProcess();
+    if (mbFlags.regsUpdate)
+    {
+      mbFlags.regsUpdate = 0;
+      RegsUpdate();
+    }
+    if (adcFlags.adcUpdate)
+    {
+      adcFlags.adcUpdate = 0;
+      AdcUpdate();
+    }
+
     LedOn();
     Delay_ms(1000);
     LedOff();
@@ -58,17 +71,18 @@ int main(void)
   }
 }
 
-// void Tim2Update_Callback(void)
-// {
-//   static uint16_t cnt;
-//   UsartSendByte(LPUART1, (uint8_t)(cnt >> 8));
-//   UsartSendByte(LPUART1, (uint8_t)cnt);
-//   cnt++;
-// }
-
-// void Tim6Update_Callback(void)
-// {
-// }
+__STATIC_INLINE void RegsUpdate()
+{
+  ;
+}
+__STATIC_INLINE void AdcUpdate()
+{
+  mbRegs.FMC = adcDate.fireMonCur;
+  mbRegs.FMV = adcDate.fireMonV;
+  mbRegs.HMC = adcDate.heatMonCur;
+  mbRegs.HMV = adcDate.heatMonV;
+  mbRegs.TMG = adcDate.temp;
+}
 
 void Delay_ms(uint32_t delay)
 {
