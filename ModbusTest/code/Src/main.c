@@ -18,7 +18,6 @@
 
 // Private Function prototypes -------------------------------------------------
 void                 SystemClock_Config(void);
-void                 Delay_ms(uint32_t delay);
 __STATIC_INLINE void RegsUpdate(void);
 __STATIC_INLINE void AdcUpdate(void);
 // Functions
@@ -32,19 +31,26 @@ int main(void)
   NVIC_SetPriorityGrouping(NVIC_PRIORITYGROUP_4);
 
   // System interrupt init
+
+  /** NOJTAG: JTAG-DP Disabled and SW-DP Enabled
+   */
+  AFIO->MAPR &= ~AFIO_MAPR_SWJ_CFG;
+  AFIO->MAPR |= AFIO_MAPR_SWJ_CFG_JTAGDISABLE;
+
   // Configure the system clock
   RccInit();
   SysTickInit();
   // Initialize all configured peripherals
+  Delay_ms(100);
   GpioInit();
   ModBusInit();
   MX_DMA_Init();
   MX_ADC1_Init();
   TIM3_Init();
   AD5270Init();
-  __IO uint16_t temp1 = AD5270ReadRdac(SLA_HEAT);
-  __IO uint16_t temp2 = AD5270ReadRdac(SLA_FIRE);
-  UsartSendStrIT(USART1, (uint8_t*)"\nInit Complete\n");
+
+  // AD5270WriteRdac(SLA_FIRE, 0x100);
+  DebugSendMessage("Init Complete\n");
 
   LL_ADC_Enable(ADC1);
   LL_ADC_REG_StartConversionExtTrig(ADC1, LL_ADC_REG_TRIG_EXT_RISING);
@@ -63,25 +69,53 @@ int main(void)
       adcFlags.adcUpdate = 0;
       AdcUpdate();
     }
-
-    LedOn();
-    Delay_ms(1000);
-    LedOff();
-    Delay_ms(1000);
   }
 }
 
 __STATIC_INLINE void RegsUpdate()
 {
-  ;
+  if (mbHoldRegs.SCR.fireOn)
+  {
+    GpioOutSet(CTRL_GPIO_Port, FIRE_CHARGE_Pin);
+  }
+  else
+  {
+    GpioOutReset(CTRL_GPIO_Port, FIRE_CHARGE_Pin);
+  }
+  if (mbHoldRegs.SCR.HeatOn)
+  {
+    GpioOutSet(CTRL_GPIO_Port, HEAT_EN_Pin);
+  }
+  else
+  {
+    GpioOutReset(CTRL_GPIO_Port, HEAT_EN_Pin);
+  }
+
+  AD5270WriteRdac(SLA_HEAT, mbHoldRegs.HRC);
 }
+
 __STATIC_INLINE void AdcUpdate()
 {
-  mbRegs.FMC = adcDate.fireMonCur;
-  mbRegs.FMV = adcDate.fireMonV;
-  mbRegs.HMC = adcDate.heatMonCur;
-  mbRegs.HMV = adcDate.heatMonV;
-  mbRegs.TMG = adcDate.temp;
+  mbInRegs.FMC = adcDate.fireMonCur;
+  mbInRegs.FMV = adcDate.fireMonV;
+  mbInRegs.HMC = adcDate.heatMonCur;
+  mbInRegs.HMV = adcDate.heatMonV;
+  mbInRegs.TMG = adcDate.temp;
+
+  if (mbHoldRegs.TMS < mbInRegs.TMG)
+  {
+    GpioOutReset(CTRL_GPIO_Port, HEAT_EN_Pin);
+    GpioOutReset(CTRL_GPIO_Port, FIRE_CHARGE_Pin);
+    mbHoldRegs.SCR.HeatOn = 0;
+    mbHoldRegs.SCR.fireOn = 0;
+    mbInRegs.TCC |= 0x02;
+  }
+  else
+  {
+    mbInRegs.TCC &= ~0x02;
+  }
+  
+  
 }
 
 void Delay_ms(uint32_t delay)
@@ -97,13 +131,21 @@ void Delay_ms(uint32_t delay)
   }
 }
 
+#ifdef DEBUG
+void DebugSendMessage(char* str)
+{
+  UsartSendStrIT(USART1, (uint8_t*)str);
+}
+#else
+void DebugSendMessage(char* str)
+{
+  (void)str;
+}
+#endif
+
 void Error_Handler(void)
 {
   while (1)
   {
-    LedOn();
-    Delay_ms(300);
-    LedOff();
-    Delay_ms(300);
   }
 }

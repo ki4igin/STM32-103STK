@@ -7,22 +7,16 @@
 // Private Typedef -------------------------------------------------------------
 typedef enum
 {
-  FUNC_READ_Coils       = 0x01,
-  FUNC_READ_DiscInput   = 0x02,
-  FUNC_READ_Regs        = 0x03,
-  FUNC_READ_InputRegs   = 0x04,
-  FUNC_WRITE_SingleCoil = 0x05,
+  FUNC_READ_HoldRegs    = 0x03,
+  FUNC_READ_InRegs      = 0x04,
   FUNC_WRITE_SingleReg  = 0x06,
-  FUNC_WRITE_MultCoils  = 0x0F,
   FUNC_WRITE_MultleRegs = 0x10,
 } FUNC_TypeDef;
 
 // Private Macro ---------------------------------------------------------------
-#define CRC_CHECK_DISABLE  // Р’С‹РєР»СЋС‡РµРЅРёРµ РїСЂРѕРІРµСЂРєРё crc
+// #define CRC_CHECK_DISABLE  // Выключение проверки crc
 
-#define UART LPUART
-
-#define SLA (0x0A)  // РђРґСЂРµСЃ СѓСЃС‚СЂРѕР№СЃС‚РІР°
+#define SLA (0x0A)  // Адрес устройства
 // Private Variables -----------------------------------------------------------
 uint8_t rxBuf[256] = {0};
 uint8_t txBuf[256] = {0};
@@ -57,11 +51,14 @@ union
   uint16_t all;
 } modBusCoils;
 
-MBRegs_t  mbRegs  = {0};
-MBFlags_t mbFlags = {0};
+MBHoldRegs_t mbHoldRegs = {0};
+MBInRegs_t   mbInRegs   = {0};
+MBFlags_t    mbFlags    = {0};
 // Private Function prototypes -------------------------------------------------
-uint8_t                 DataProcessing(void);
-__STATIC_INLINE uint8_t ReadRegs(uint8_t txBufSize);
+uint8_t DataProcessing(void);
+
+__STATIC_INLINE uint8_t ReadInRegs(uint8_t txBufSize);
+__STATIC_INLINE uint8_t ReadHoldRegs(uint8_t txBufSize);
 __STATIC_INLINE uint8_t WriteSingleReg(uint8_t txBufSize);
 __STATIC_INLINE uint8_t WriteMultleRegs(uint8_t txBufSize);
 
@@ -70,6 +67,9 @@ __STATIC_INLINE uint8_t Error(uint8_t exceptionCode);
 // -------------------------------------------------------------------
 void ModBusInit()
 {
+  mbHoldRegs.TRS = 70;
+  mbHoldRegs.TMS = 70;
+
   UsartInit();
   TIM4_Init();
 
@@ -88,7 +88,7 @@ void ModBusProcess()
     uint8_t rxBufSize = uartFlags.cntRx;
     if ((rxBuf[0] != SLA) || (rxBufSize < 4))
     {
-      UsartSendStrIT(USART1, (uint8_t*)"SLA Error\n");
+      DebugSendMessage("SLA Error\n");
       UsartReceiveIT(USART1, rxBuf);
       return;
     }
@@ -97,7 +97,7 @@ void ModBusProcess()
     uint16_t crc16rx = *((uint16_t*)&rxBuf[rxBufSize - 2]);
     if (crc16rx != crc16)
     {
-      UsartSendStrIT(USART1, (uint8_t*)"Crc Error\n");
+      DebugSendMessage("Crc Error\n");
       UsartReceiveIT(USART1, rxBuf);
       return;
     }
@@ -115,17 +115,18 @@ uint8_t DataProcessing()
   FUNC_TypeDef func = (FUNC_TypeDef)rxBuf[1];
   switch (func)
   {
-    case FUNC_READ_Regs:
-      txBufSize = ReadRegs(txBufSize);
+    case FUNC_READ_InRegs:
+      txBufSize = ReadInRegs(txBufSize);
       break;
-
+    case FUNC_READ_HoldRegs:
+      txBufSize = ReadHoldRegs(txBufSize);
+      break;
     case FUNC_WRITE_SingleReg:
       txBufSize = WriteSingleReg(txBufSize);
       break;
     case FUNC_WRITE_MultleRegs:
       txBufSize = WriteMultleRegs(txBufSize);
       break;
-
     default:
       txBufSize = Error(0x01);
       break;
@@ -136,34 +137,7 @@ uint8_t DataProcessing()
   return txBufSize;
 }
 
-void ReadCoils(uint8_t txBufSize)
-{
-  uint16_t startAddr = __REV16(*(uint16_t*)&rxBuf[2]);
-  uint16_t quality   = __REV16(*(uint16_t*)&rxBuf[4]);
-
-  txBuf[txBufSize++] = (quality - 1) / 8 + 1;
-  // txBuf[txBufSize] = 0;
-  for (uint16_t i = 0; i < quality; i++)
-  {
-    if ((i & 0x7) == 0x0)
-    {
-      txBuf[++txBufSize] = 0;
-    }
-
-    uint32_t bitMask = 1U << (startAddr + i);
-    txBuf[txBufSize] |= (READ_BIT(modBusCoils.all, bitMask) == bitMask)
-                        << (i & 0x7);
-  }
-  txBufSize++;
-  // uint16_t* pCoils    = (uint16_t*)&modBusCoils;
-  // pCoils += startAddr;
-  // for (uint16_t i = 0; i < quality; i++)
-  // {
-  //   txBuf[txBufSize++] = *pCoils++;
-  // }
-}
-
-__STATIC_INLINE uint8_t ReadRegs(uint8_t txBufSize)
+__STATIC_INLINE uint8_t ReadInRegs(uint8_t txBufSize)
 {
   uint16_t startAddr = __REV16(*(uint16_t*)&rxBuf[2]);
   uint16_t quality   = __REV16(*(uint16_t*)&rxBuf[4]);
@@ -172,21 +146,52 @@ __STATIC_INLINE uint8_t ReadRegs(uint8_t txBufSize)
   {
     return Error(0x03);
   }
-  else if ((startAddr > (sizeof(MBRegs_t) / (sizeof(uint16_t)))) ||
+  else if ((startAddr > (sizeof(MBInRegs_t) / (sizeof(uint16_t)))) ||
            ((uint32_t)startAddr + quality) >
-               (sizeof(MBRegs_t) / (sizeof(uint16_t))))
+               (sizeof(MBInRegs_t) / (sizeof(uint16_t))))
   {
     return Error(0x02);
   }
 
-  uint16_t* pmbRegs = (uint16_t*)&mbRegs + startAddr;
-
   txBuf[txBufSize++] = 2 * quality;
+
+  uint16_t* pmbRegs = (uint16_t*)&mbInRegs + startAddr;
+  uint16_t* ptxBuf  = (uint16_t*)&txBuf[txBufSize];
 
   for (uint8_t i = 0; i < quality; i++)
   {
-    txBuf[txBufSize++] = *pmbRegs++;
+    *ptxBuf++ = __REV16(*pmbRegs++);
   }
+  txBufSize += 2 * quality;
+  return txBufSize;
+}
+
+__STATIC_INLINE uint8_t ReadHoldRegs(uint8_t txBufSize)
+{
+  uint16_t startAddr = __REV16(*(uint16_t*)&rxBuf[2]);
+  uint16_t quality   = __REV16(*(uint16_t*)&rxBuf[4]);
+
+  if (quality == 0 || quality > 0x007D)
+  {
+    return Error(0x03);
+  }
+  else if ((startAddr > (sizeof(MBHoldRegs_t) / (sizeof(uint16_t)))) ||
+           ((uint32_t)startAddr + quality) >
+               (sizeof(MBHoldRegs_t) / (sizeof(uint16_t))))
+  {
+    return Error(0x02);
+  }
+
+  txBuf[txBufSize++] = 2 * quality;
+
+  uint16_t* pmbRegs = (uint16_t*)&mbHoldRegs + startAddr;
+  uint16_t* ptxBuf  = (uint16_t*)&txBuf[txBufSize];
+
+  for (uint8_t i = 0; i < quality; i++)
+  {
+    *ptxBuf++ = __REV16(*pmbRegs++);
+  }
+  txBufSize += 2 * quality;
   return txBufSize;
 }
 
@@ -195,11 +200,11 @@ __STATIC_INLINE uint8_t WriteSingleReg(uint8_t txBufSize)
   uint16_t startAddr = __REV16(*(uint16_t*)&rxBuf[2]);
   uint16_t value     = __REV16(*(uint16_t*)&rxBuf[4]);
 
-  if (startAddr > (sizeof(MBRegs_t) / (sizeof(uint16_t))))
+  if (startAddr > (sizeof(MBHoldRegs_t) / (sizeof(uint16_t))))
   {
     return Error(0x02);
   }
-  uint16_t* pmbRegs  = (uint16_t*)&mbRegs + startAddr;
+  uint16_t* pmbRegs  = (uint16_t*)&mbHoldRegs + startAddr;
   *pmbRegs           = value;
   txBuf[txBufSize++] = startAddr >> 8;
   txBuf[txBufSize++] = (uint8_t)startAddr;
@@ -221,19 +226,19 @@ __STATIC_INLINE uint8_t WriteMultleRegs(uint8_t txBufSize)
   {
     return Error(0x03);
   }
-  else if ((startAddr > (sizeof(MBRegs_t) / (sizeof(uint16_t)))) ||
+  else if ((startAddr > (sizeof(MBHoldRegs_t) / (sizeof(uint16_t)))) ||
            ((uint32_t)startAddr + quality) >
-               (sizeof(MBRegs_t) / (sizeof(uint16_t))))
+               (sizeof(MBHoldRegs_t) / (sizeof(uint16_t))))
   {
     return Error(0x02);
   }
 
-  uint16_t* pmbRegs = (uint16_t*)&mbRegs + startAddr;
+  uint16_t* pmbRegs = (uint16_t*)&mbHoldRegs + startAddr;
   uint16_t* prxBuf  = (uint16_t*)&rxBuf[7];
 
   for (uint8_t i = 0; i < quality; i++)
   {
-    *pmbRegs++ = *prxBuf++;
+    *pmbRegs++ = __REV16(*prxBuf++);
   }
 
   txBuf[txBufSize++] = startAddr >> 8;

@@ -63,6 +63,7 @@ MCU := $(CPU) -mthumb $(FPU)
 
 # Optimization and Debug level
 ifeq ($(DEBUG), 1)
+C_DEFINES += DEBUG
 OPT := -Og -g -gdwarf-2
 else
 OPT := -Os

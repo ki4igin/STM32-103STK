@@ -25,7 +25,8 @@
 
 // Function prototypes ---------------------------------------------------------
 void Error_Handler(void);
-
+void DebugSendMessage(char* str);
+void Delay_ms(uint32_t delay);
 // Inline Functions ------------------------------------------------------------
 
 #endif

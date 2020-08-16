@@ -10,7 +10,7 @@
 #define UART_RX_PIN    RX_Pin
 #define UART_TX_PIN    TX_Pin
 #define UART_PORT      GPIOA
-#define UART_BAUD_RATE 115200
+#define UART_BAUD_RATE 38400
 // Private Variables -----------------------------------------------------------
 UartFlags_t uartFlags = {0};
 
@@ -26,16 +26,22 @@ void UsartInit(void)
 {
   RCC->APB2ENR |= RCC_APB2ENR_IOPAEN | RCC_APB2ENR_USART1EN;
 
-  NVIC_SetPriority(USART1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
+  NVIC_SetPriority(USART1_IRQn,
+                   NVIC_EncodePriority(NVIC_GetPriorityGrouping(), 0, 0));
   NVIC_EnableIRQ(USART1_IRQn);
 
   // GPIO Configuration
-  GpioSetMode(UART_PORT, UART_TX_PIN, GPIO_MODE_ALTERNATE_PUSHPULL, GPIO_SPEED_HIGH);
+  GpioSetMode(UART_PORT,
+              UART_TX_PIN,
+              GPIO_MODE_ALTERNATE_PUSHPULL,
+              GPIO_SPEED_HIGH);
   GpioSetMode(UART_PORT, UART_RX_PIN, GPIO_MODE_FLOATING, GPIO_SPEED_INPUT);
   // UART Congiguration
   USART1->BRR = SystemCoreClock / UART_BAUD_RATE;
   USART1->CR1 = USART_CR1_M | USART_CR1_PCE | USART_CR1_TE | USART_CR1_RE;
   USART1->CR1 |= USART_CR1_UE;
+
+  DebugSendMessage("\nInit Start\n");
 }
 
 void UsartSendStr(USART_TypeDef *USARTx, uint8_t *str)
@@ -65,6 +71,10 @@ void UsartSendArray(USART_TypeDef *USARTx, uint8_t *pbuf, uint8_t bufSize)
 
 void UsartSendStrIT(USART_TypeDef *USARTx, uint8_t *str)
 {
+  while (txBufSize)
+  {
+    __asm("nop");
+  }
   ptxBuf    = str;
   txBufSize = 0;
   while (*str != 0)
@@ -136,12 +146,12 @@ void Tim4Update_Callback()
   CLEAR_BIT(TIM4->CR1, TIM_CR1_CEN);
   CLEAR_BIT(USART1->CR1, USART_CR1_RXNEIE);
 
-  uartFlags.rx    = 1;
-  uartFlags.cntRx = cntRx;
+  uartFlags.rx     = 1;
+  uartFlags.cntRx  = cntRx;
   uartFlags.cnt15t = cnt15t;
 
   cnt15t = 0;
-  cntRx = 0;
+  cntRx  = 0;
 }
 
 void Tim4CC1_Callback()
